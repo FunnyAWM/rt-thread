@@ -38,9 +38,16 @@ static bool mcu_clock_timer_intr_handler(gptimer_handle_t gptimer, const gptimer
 static void mcu_clock_timer_init(rt_clock_timer_t *timer, rt_uint32_t state)
 {
     gptimer_handle_t gptimer = (gptimer_handle_t)timer->parent.user_data;
+    esp_err_t err;
 
-    // let the gptimer into enable status
-    ESP_ERROR_CHECK(gptimer_enable(gptimer));
+    /* let the gptimer into enable status; the framework may call init more
+     * than once (device init plus open), and enabling twice is not an error
+     * for us. */
+    err = gptimer_enable(gptimer);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE)
+    {
+        ESP_ERROR_CHECK(err);
+    }
 }
 
 /**

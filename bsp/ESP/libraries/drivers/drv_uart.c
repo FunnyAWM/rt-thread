@@ -51,6 +51,7 @@ static void mcu_uart_rx_intr_handler(void *param)
     rt_interrupt_enter();
     serial = (struct rt_serial_device *)param;
     port = (uart_port_t)serial->parent.user_data;
+
     uart_intr_status = uart_hal_get_intsts_mask(&hal[port]);
     if (uart_intr_status != 0)
     {
@@ -70,6 +71,30 @@ static rt_err_t mcu_uart_configure(struct rt_serial_device *serial, struct seria
 
 static rt_err_t mcu_uart_control(struct rt_serial_device *serial, int cmd, void *arg)
 {
+    uart_port_t port = (uart_port_t)serial->parent.user_data;
+
+    switch (cmd)
+    {
+    case RT_DEVICE_CTRL_SET_INT:
+        /* The serial framework calls this after serial_rx is allocated; the
+         * peripheral interrupt must not be enabled any earlier or the RX ISR
+         * would run against an unallocated rx_fifo. */
+        if (((rt_uint32_t)(uintptr_t)arg) & RT_DEVICE_FLAG_INT_RX)
+        {
+            uart_intr_config_t uart_intr = {
+                .intr_enable_mask = UART_INTR_RXFIFO_FULL,
+                .rxfifo_full_thresh = 1,
+            };
+            ESP_ERROR_CHECK(uart_intr_config(port, &uart_intr));
+        }
+        break;
+    case RT_DEVICE_CTRL_CLR_INT:
+        uart_hal_disable_intr_mask(&hal[port], UART_INTR_RXFIFO_FULL);
+        break;
+    default:
+        break;
+    }
+
     return RT_EOK;
 }
 
@@ -112,10 +137,6 @@ static const struct rt_uart_ops _uart_ops = {
 
 int rt_hw_uart_init(void)
 {
-    uart_intr_config_t uart_intr = {
-        .intr_enable_mask = UART_INTR_RXFIFO_FULL,
-        .rxfifo_full_thresh = 1,
-    };
     struct serial_configure config = RT_SERIAL_CONFIG_DEFAULT;
     uart_config_t uart_config = {
         .baud_rate = BAUD_RATE_115200,
@@ -137,8 +158,13 @@ int rt_hw_uart_init(void)
 
     ESP_ERROR_CHECK(uart_param_config(RT_BSP_UART_PORT, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(RT_BSP_UART_PORT, RT_BSP_UART_TX_PIN, RT_BSP_UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    /* Bind the ISR only; the RX interrupt itself is enabled from
+     * mcu_uart_control(RT_DEVICE_CTRL_SET_INT) once the device is opened. */
     ESP_ERROR_CHECK(esp_intr_alloc(uart_periph_signal[RT_BSP_UART_PORT].irq, intr_alloc_flags, mcu_uart_rx_intr_handler, (void *)&_serial, NULL));
-    ESP_ERROR_CHECK(uart_intr_config(RT_BSP_UART_PORT, &uart_intr));
+    /* The ROM/2nd-stage bootloader leaves UART int_ena bits set, so the RX
+     * interrupt would fire before the serial framework allocates rx_fifo. */
+    uart_hal_disable_intr_mask(&hal[RT_BSP_UART_PORT], UART_INTR_RXFIFO_FULL);
+    uart_hal_clr_intsts_mask(&hal[RT_BSP_UART_PORT], UART_INTR_RXFIFO_FULL);
     _serial.ops = &_uart_ops;
     _serial.config = config;
 

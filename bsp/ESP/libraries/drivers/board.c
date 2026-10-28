@@ -20,6 +20,7 @@
 #include "esp_attr.h"
 #include "esp_timer.h"
 #include "driver/gptimer.h"
+#include "esp_rom_sys.h"
 
 /* CI pulls RT-Thread-packages/esp-idf rtt-dev, where OS-tick IDs live only as SYSTIMER_LL_*.
  * IDF v6.1 / package PR #18 reintroduces the non-LL names in esp_private/systimer.h. */
@@ -115,6 +116,16 @@ INIT_DEVICE_EXPORT(delay_us_init);
 void rt_hw_us_delay(rt_uint32_t us)
 {
     uint64_t count = 0;
+
+    /* delay_us_init() runs at INIT_DEVICE_EXPORT, which is later than some
+     * users (soft I2C bit-banging initialises at board level).  Fall back to
+     * the ROM busy loop until the timer exists. */
+    if (gptimer_hw_us == NULL)
+    {
+        esp_rom_delay_us(us);
+        return;
+    }
+
     ESP_ERROR_CHECK(gptimer_start(gptimer_hw_us));
     ESP_ERROR_CHECK(gptimer_set_raw_count(gptimer_hw_us, 0));
     /* Retrieve the timestamp at anytime*/

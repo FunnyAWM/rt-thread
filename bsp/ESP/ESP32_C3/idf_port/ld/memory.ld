@@ -61,7 +61,13 @@ MEMORY
   /**
    * RTC fast memory (executable). Persists over deep sleep.
    */
-  rtc_iram_seg(RWX) : org = 0x50000000, len = 0x2000 - 0
+  rtc_iram_seg(RWX) : org = 0x50000000, len = 0x2000 - 0x18
+  /**
+   * RTC memory reserved for data with fixed addresses.
+   * RESERVE_RTC_MEM = RTC_TIMER_RESERVE_RTC (24 bytes, s_rtc_timer_retain_mem)
+   * + ESP_BOOTLOADER_RESERVE_RTC (CONFIG_BOOTLOADER_RESERVE_RTC_SIZE = 0x0).
+   */
+  rtc_reserved_seg(RW) : org = 0x50000000 + 0x2000 - 0x18, len = 0x18
 }
 _static_data_end = _bss_end;
 /* Heap ends at top of dram0_0_seg */

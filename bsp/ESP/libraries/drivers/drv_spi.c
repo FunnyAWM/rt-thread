@@ -139,7 +139,6 @@ static rt_err_t spi_configure(struct rt_spi_device *device,
 
     static spi_device_interface_config_t devcfg;
 
-    LOG_W("configuration->max_hz = %d \n", configuration->max_hz);
     if (configuration->max_hz >= SPI_MASTER_FREQ_80M)
     {
         devcfg.clock_speed_hz = SPI_MASTER_FREQ_80M;    /*/< 80MHz*/

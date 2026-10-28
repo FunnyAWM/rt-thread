@@ -32,7 +32,7 @@ static void mcu_pin_mode(rt_device_t dev, rt_base_t pin, rt_uint8_t mode)
 {
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_INTR_DISABLE;
-    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.mode = GPIO_MODE_INPUT_OUTPUT;
     io_conf.pin_bit_mask = (1ULL << pin);
     io_conf.pull_down_en = 0;
     io_conf.pull_up_en = 0;
@@ -40,18 +40,27 @@ static void mcu_pin_mode(rt_device_t dev, rt_base_t pin, rt_uint8_t mode)
     switch (mode)
     {
     case PIN_MODE_INPUT:
+        gpio_set_pull_mode(pin, GPIO_FLOATING);
         gpio_set_direction(pin, GPIO_MODE_INPUT);
         break;
     case PIN_MODE_OUTPUT:
-        gpio_set_direction(pin, GPIO_MODE_OUTPUT);
+        /* keep the input path enabled so rt_pin_read() reads the driven level */
+        gpio_set_direction(pin, GPIO_MODE_INPUT_OUTPUT);
         break;
     case PIN_MODE_OUTPUT_OD:
         gpio_set_direction(pin, GPIO_MODE_INPUT_OUTPUT_OD);
         break;
+    case PIN_MODE_INPUT_PULLUP:
+        gpio_set_pull_mode(pin, GPIO_PULLUP_ONLY);
+        gpio_set_direction(pin, GPIO_MODE_INPUT);
+        break;
+    case PIN_MODE_INPUT_PULLDOWN:
+        gpio_set_pull_mode(pin, GPIO_PULLDOWN_ONLY);
+        gpio_set_direction(pin, GPIO_MODE_INPUT);
+        break;
     default:
         break;
     }
-    /*TODO:set gpio out put mode */
 }
 
 

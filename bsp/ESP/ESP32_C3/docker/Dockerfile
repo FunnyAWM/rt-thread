@@ -12,7 +12,7 @@ RUN apt update && \
     add-apt-repository universe && \
     apt update && \
     apt install -y --no-install-recommends \
-        sudo git wget python3 python3-pip scons vim xz-utils minicom && \
+        sudo git wget python3 python3-pip python3-venv ca-certificates gcc scons vim xz-utils minicom && \
     pip3 install esptool && \
     useradd -m dev && \
     echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
@@ -37,12 +37,12 @@ RUN wget https://raw.githubusercontent.com/RT-Thread/env/master/install_ubuntu.s
     ./install_ubuntu.sh
 
 # 6. Modify toolchains path
-RUN sed -i "s|^.*EXEC_PATH.*|    EXEC_PATH   = r'/opt/riscv32-esp-elf/bin'|" bsp/ESP32_C3/rtconfig.py
+RUN sed -i "s|^.*EXEC_PATH.*|    EXEC_PATH   = r'/opt/riscv32-esp-elf/bin'|" bsp/ESP/ESP32_C3/rtconfig.py
 
 # 7. Set enviroment variables
 ENV PATH="/opt/riscv32-esp-elf/bin:/home/dev/.env/tools/scripts:$PATH"
 
 # 8. Update rtthread packages
-WORKDIR /home/dev/rt-thread/bsp/ESP32_C3
+WORKDIR /home/dev/rt-thread/bsp/ESP/ESP32_C3
 RUN pkgs --update
 
